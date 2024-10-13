@@ -21,11 +21,23 @@ func main() {
 	flag.BoolVar(&links, "links", false, "Extract links from the webpage")
 	flag.BoolVar(&html, "html", false, "Save HTML content of the webpage")
 	flag.BoolVar(&screenshot, "screenshot", false, "Take a screenshot of the webpage")
+
+	// Handle the help flag to display usage instructions
+	flag.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(), "Usage of the tool")
+		fmt.Println("  -html\n        Save HTML content of the webpage")
+		fmt.Println("  -links\n        Extract links from the webpage")
+		fmt.Println("  -screenshot\n        Take a screenshot of the webpage")
+		fmt.Println("\nExample:")
+		fmt.Printf("go run scrapper.go  -html -links -screenshot https://example.com\n")
+	}
+
+	// Parse flags
 	flag.Parse()
 
 	// Check if a URL was provided; if not, print an error and exit
 	if len(flag.Args()) == 0 {
-		log.Fatal("No URL provided. Please input an URL to scrape")
+		log.Fatal("No URL provided. Please input a URL to scrape")
 	}
 
 	// The first argument is the URL
@@ -98,7 +110,6 @@ func main() {
 
 // Screenshot func
 func captureScreenshot(url string) error {
-
 	// Chrome init
 	ctx, cancel := chromedp.NewContext(context.Background())
 	defer cancel() // Release the browser resources when no longer needed
