@@ -5,11 +5,13 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"strings"
 
 	"github.com/chromedp/chromedp"
 	"github.com/gocolly/colly"
+	"golang.org/x/net/proxy"
 )
 
 func main() {
@@ -24,20 +26,19 @@ func main() {
 
 	// Handle the help flag to display usage instructions
 	flag.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "Usage of the tool")
+		fmt.Fprintf(flag.CommandLine.Output(), "Usage of the tool\n")
 		fmt.Println("  -html\n        Save HTML content of the webpage")
 		fmt.Println("  -links\n        Extract links from the webpage")
 		fmt.Println("  -screenshot\n        Take a screenshot of the webpage")
 		fmt.Println("\nExample:")
-		fmt.Printf("go run scrapper.go  -html -links -screenshot https://example.com\n")
+		fmt.Printf("go run scrapper.go -html -links -screenshot https://example.onion\n")
 	}
 
-	// Parse flags
 	flag.Parse()
 
 	// Check if a URL was provided; if not, print an error and exit
 	if len(flag.Args()) == 0 {
-		log.Fatal("No URL provided. Please input a URL to scrape")
+		log.Fatal("No URL provided. Please input a .onion URL to scrape")
 	}
 
 	// The first argument is the URL
@@ -51,8 +52,20 @@ func main() {
 		screenshot = true
 	}
 
+	// Set up Tor proxy
+	proxyURL := "127.0.0.1:9050" // Tor'un varsayılan SOCKS5 portu
+	dialer, err := proxy.SOCKS5("tcp", proxyURL, nil, proxy.Direct)
+	if err != nil {
+		log.Fatal("Failed to set up SOCKS5 proxy:", err)
+	}
+
 	// Initialize a new Colly collector
 	c := colly.NewCollector()
+
+	// Set the transport to use the Tor proxy
+	c.WithTransport(&http.Transport{
+		Dial: dialer.Dial,
+	})
 
 	c.OnError(func(_ *colly.Response, err error) {
 		log.Println("An error occurred: ", err)
@@ -97,6 +110,7 @@ func main() {
 		})
 	}
 
+	// Visit the URL
 	c.Visit(url)
 
 	// Capture screenshot if the flag is set
@@ -113,6 +127,18 @@ func captureScreenshot(url string) error {
 	// Chrome init
 	ctx, cancel := chromedp.NewContext(context.Background())
 	defer cancel() // Release the browser resources when no longer needed
+
+	// Set Tor proxy for chromedp
+	opts := []chromedp.ExecAllocatorOption{
+		chromedp.Flag("proxy-server", "socks5://127.0.0.1:9050"), // Tor proxy
+	}
+
+	allocCtx, cancel := chromedp.NewExecAllocator(ctx, opts...)
+	defer cancel()
+
+	// Create a new context with the allocated options
+	ctx, cancel = chromedp.NewContext(allocCtx)
+	defer cancel()
 
 	var screenshotBuffer []byte
 	err := chromedp.Run(ctx,
