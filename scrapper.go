@@ -23,18 +23,20 @@ func main() {
 	flag.BoolVar(&screenshot, "screenshot", false, "Take a screenshot of the webpage")
 	flag.Parse()
 
+	// Check if a URL was provided; if not, print an error and exit
+	if len(flag.Args()) == 0 {
+		log.Fatal("No URL provided. Please input an URL to scrape")
+	}
+
+	// The first argument is the URL
+	url := flag.Args()[0]
+
 	// Check if no flags were chosen
 	if !links && !html && !screenshot {
-		fmt.Println("No flags were chosen, setting all flags for https://sibervatan.org.")
+		fmt.Println("No flags were chosen, setting all flags for", url)
 		links = true
 		html = true
 		screenshot = true
-	}
-
-	// Check if a URL was provided; if not, use the default URL
-	url := "https://sibervatan.org/"
-	if len(flag.Args()) > 0 {
-		url = flag.Args()[0]
 	}
 
 	// Initialize a new Colly collector
